@@ -6,6 +6,10 @@ class Game{
     machinepoint= 0;
     computerCount = 0;
 
+    constructor(){
+        this.setLocalStorage(this.compDict)
+    }
+
     spchRec(){
         let personWord
         voice.start();
@@ -16,17 +20,20 @@ class Game{
         voice.onaudioend = () => {
             console.log('ended..')
         }
-
-        voice.onerror = event => {
-            personWord = 'Speech recognition error detected: ' + event.error
-            this.setPersonWord(personWord)
-        }
         
         voice.onresult = event => {
             personWord = event.results[0][0].transcript
-            console.log(event.results[0][0].transcript);
             this.setPersonWord(personWord) 
         }
+    }
+
+    setLocalStorage(data){
+        window.localStorage.setItem('CompMemory', JSON.stringify(data))
+    }
+
+    getLocalStorage(){
+        let soz = window.localStorage.getItem('CompMemory')
+        return JSON.parse(soz)
     }
 
     setPersonWord(word){
@@ -35,25 +42,19 @@ class Game{
             this.computerCount > 0 &&
             !this.personDict.includes(word) &&
             !this.usedWords.includes(word)
-            ){
+            )
+            {
             sozlar.textContent = 'You: ' + word
             this.personDict.push(word)
-            console.log(this.personDict);
             this.setComputerWord(word[word.length-1])
-        }
-        else if(
-            (word.split(' ').length == 1 && !this.computerCount > 0))
-            //  || 
-            // ((this.humanpoint > 0 && !this.personDict.includes(word) && !this.usedWords.includes(word)) || 
-            // (this.machinepoint > 0 && !this.personDict.includes(word) && !this.usedWords.includes(word))))
-        {
+            }
+        else if((word.split(' ').length == 1 && !this.computerCount > 0)) {
             sozlar.textContent = 'You: ' + word
             this.personDict.push(word)
-            console.log(this.personDict);
             this.setComputerWord(word[word.length-1])
         }
         else if(word.split(' ').length > 1){
-            sozlar.textContent = word
+            sozlar.textContent = 'You should speak only a word'
         }
         else{
             this.machinepoint++
@@ -61,14 +62,14 @@ class Game{
             
             setTimeout(() => {
                 if(confirm("You lose! Your word does not start with the last latter of computer's word. Do you want to continue?")){
-                    this.compDict = [...new Set([...this.personDict, ...this.compDict, ...this.usedWords])];
+                    let cs = this.getLocalStorage()
+                    this.setLocalStorage([...new Set([...this.personDict, ...cs, ...this.usedWords])]);
                     this.personDict = []
                     this.usedWords = []
                     this.computerCount = 0
                     computerPoint.textContent = 'Computer: ' + this.machinepoint
                     words.textContent = 'Computer: '
                     sozlar.textContent = 'You: '
-                    console.log(this.compDict);
                 }
                 else{
                     let body = document.querySelector('.body')
@@ -84,40 +85,41 @@ class Game{
 
     setComputerWord(letter){
         let count = 0;
+        let computersoz = this.getLocalStorage()
         this.computerCount++
         setTimeout(() => {
-            for(let i of this.compDict){
+            for(let i of computersoz){
                 if(i[0] != letter){
                     count++
                 }else if(i[0] == letter && !this.personDict.includes(i)){
                     words.textContent = 'Computer: ' + i
-                    this.usedWords.push(this.compDict.splice(this.compDict.indexOf(i), 1) + '')
-                    console.log(this.usedWords);
+                    this.usedWords.push(computersoz.splice(computersoz.indexOf(i), 1) + '') // removing used word from computer memory
+                    this.setLocalStorage(computersoz)
                     break;
                 }else{
-                    this.computerLose(letter)
+                    this.computerLose(letter, computersoz)
+                    break;
                 }   
             }
             if(count == this.compDict.length){
-                this.computerLose(letter)
+                this.computerLose(letter, computersoz)
             }
         }, 500);
 
     }
 
-    computerLose(letter){
+    computerLose(letter, cs){
         this.humanpoint++
         words.textContent = 'Computer: ' + `I don't know any word begins with ${letter}`
         setTimeout(() => {
            if(confirm("Congratulations, you win!!! Do you want to continue?")){
-                this.compDict = [...new Set([...this.personDict, ...this.compDict, ...this.usedWords])];
+                this.setLocalStorage([...new Set([...this.personDict, ...cs, ...this.usedWords])]) // appending local storage with person and com'sused words, com's memory
                 this.personDict = []
                 this.usedWords = []
                 this.computerCount = 0
                 personPoint.textContent = 'Person: ' + this.humanpoint
                 words.textContent = 'Computer: '
                 sozlar.textContent = 'You: '
-                console.log(this.compDict);
            }else{
                 let body = document.querySelector('.body')
                 body.innerHTML = ''
